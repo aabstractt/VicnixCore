@@ -2,6 +2,7 @@ package net.vicnix.core.provider;
 
 import lombok.Getter;
 import net.vicnix.core.VicnixCore;
+import net.vicnix.core.utils.VicnixIcon;
 import org.bukkit.configuration.MemorySection;
 
 import java.sql.*;
@@ -10,12 +11,12 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.UUID;
 
-public class MysqlProvider implements IProvider {
+public class MysqlProvider {
 
     @Getter
     private final static MysqlProvider instance = new MysqlProvider();
 
-    private Map<String, Object> data = new HashMap<>();
+    private final Map<String, Object> data = new HashMap<>();
 
     @Getter
     private Connection connection;
@@ -52,138 +53,7 @@ public class MysqlProvider implements IProvider {
         }
     }
 
-    @Override
-    public void addEmote(String emoteName, String format) {
-        if (connection == null) {
-            VicnixCore.getInstance().getLogger().warning("Mysql not was initialized");
-
-            return;
-        }
-
-        try {
-            PreparedStatement preparedStatement = this.connection.prepareStatement("INSERT INTO emotes (emoteName, format) VALUES (?, ?)");
-
-            preparedStatement.setString(1, emoteName);
-            preparedStatement.setString(2, format);
-
-            preparedStatement.executeUpdate();
-            preparedStatement.close();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    @Override
-    public void removeEmote(int rowId) {
-        if (connection == null) {
-            VicnixCore.getInstance().getLogger().warning("Mysql not was initialized");
-
-            return;
-        }
-
-        try {
-            PreparedStatement preparedStatement = this.connection.prepareStatement("DELETE FROM emotes WHERE rowId = ?");
-
-            preparedStatement.setInt(1, rowId);
-
-            preparedStatement.executeUpdate();
-            preparedStatement.close();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    public String getEmoteFormat(int rowId) {
-        if (connection == null) {
-            VicnixCore.getInstance().getLogger().warning("Mysql not was initialized");
-
-            return null;
-        }
-
-        String format = null;
-
-        try {
-            PreparedStatement preparedStatement = this.connection.prepareStatement("SELECT format FROM emotes WHERE rowId = ?");
-
-            preparedStatement.setInt(1, rowId);
-
-            ResultSet rs = preparedStatement.executeQuery();
-
-            if (rs.next()) {
-                format = rs.getString("format");
-            }
-
-            rs.close();
-            preparedStatement.close();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        return format;
-    }
-
-    @Override
-    public String getEmote(String emoteName) {
-        if (connection == null) {
-            VicnixCore.getInstance().getLogger().warning("Mysql not was initialized");
-
-            return null;
-        }
-
-        String format = null;
-
-        try {
-            PreparedStatement preparedStatement = this.connection.prepareStatement("SELECT format FROM emotes WHERE emoteName = ?");
-
-            preparedStatement.setString(1, emoteName);
-
-            ResultSet rs = preparedStatement.executeQuery();
-
-            if (rs.next()) {
-                format = rs.getString("format");
-            }
-
-            rs.close();
-            preparedStatement.close();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        return format;
-    }
-
-    @Override
-    public int getEmoteId(String emoteName) {
-        if (connection == null) {
-            VicnixCore.getInstance().getLogger().warning("Mysql not was initialized");
-
-            return -1;
-        }
-
-        int rowId = -1;
-
-        try {
-            PreparedStatement preparedStatement = this.connection.prepareStatement("SELECT rowId FROM emotes WHERE emoteName = ?");
-
-            preparedStatement.setString(1, emoteName);
-
-            ResultSet rs = preparedStatement.executeQuery();
-
-            if (rs.next()) {
-                rowId = rs.getInt("rowId");
-            }
-
-            rs.close();
-            preparedStatement.close();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        return rowId;
-    }
-
-    @Override
-    public void setPlayerEmote(String name, int emoteId) {
+    public void setPlayerIcon(String name, VicnixIcon icon) {
         if (connection == null) {
             VicnixCore.getInstance().getLogger().warning("Mysql not was initialized");
 
@@ -196,11 +66,16 @@ public class MysqlProvider implements IProvider {
             return;
         }
 
-        setPlayerEmote(uuid, emoteId);
+        if (VicnixCore.iconList.containsKey(uuid)) {
+            VicnixCore.iconList.put(uuid, icon);
+
+            VicnixCore.updateTabEntry(uuid);
+        }
+
+        setPlayerIcon(uuid, icon);
     }
 
-    @Override
-    public void setPlayerEmote(UUID uuid, int emoteId) {
+    public void setPlayerIcon(UUID uuid, VicnixIcon icon) {
         if (connection == null) {
             VicnixCore.getInstance().getLogger().warning("Mysql not was initialized");
 
@@ -210,15 +85,15 @@ public class MysqlProvider implements IProvider {
         try {
             PreparedStatement preparedStatement;
 
-            if (this.getPlayerEmoteId(uuid) == -1) {
-                preparedStatement = this.connection.prepareStatement("INSERT INTO user_emotes(uuid, emoteId) VALUES (?, ?)");
+            if (this.getPlayerIconId(uuid) == -1) {
+                preparedStatement = this.connection.prepareStatement("INSERT INTO user_icons(uuid, iconId) VALUES (?, ?)");
 
                 preparedStatement.setString(1, uuid.toString());
-                preparedStatement.setInt(2, emoteId);
+                preparedStatement.setInt(2, icon.getId());
             } else {
-                preparedStatement = this.connection.prepareStatement("UPDATE user_emotes SET emoteId = ? WHERE uuid = ?");
+                preparedStatement = this.connection.prepareStatement("UPDATE user_icons SET iconId = ? WHERE uuid = ?");
 
-                preparedStatement.setInt(1, emoteId);
+                preparedStatement.setInt(1, icon.getId());
                 preparedStatement.setString(2, uuid.toString());
             }
 
@@ -229,7 +104,7 @@ public class MysqlProvider implements IProvider {
         }
     }
 
-    public int getPlayerEmoteId(UUID uuid) {
+    public int getPlayerIconId(UUID uuid) {
         if (connection == null) {
             VicnixCore.getInstance().getLogger().warning("Mysql not was initialized");
 
@@ -239,14 +114,14 @@ public class MysqlProvider implements IProvider {
         int rowId = -1;
 
         try {
-            PreparedStatement preparedStatement = this.connection.prepareStatement("SELECT * FROM user_emotes WHERE uuid = ?");
+            PreparedStatement preparedStatement = this.connection.prepareStatement("SELECT * FROM user_icons WHERE uuid = ?");
 
             preparedStatement.setString(1, uuid.toString());
 
             ResultSet rs = preparedStatement.executeQuery();
 
             if (rs.next()) {
-                rowId = rs.getInt("emoteId");
+                rowId = rs.getInt("iconId");
             }
 
             rs.close();
@@ -377,7 +252,7 @@ public class MysqlProvider implements IProvider {
 
     private void createTables() {
         try {
-            PreparedStatement preparedStatement = this.connection.prepareStatement("CREATE TABLE IF NOT EXISTS user_emotes(row_id INT AUTO_INCREMENT PRIMARY KEY, uuid TEXT, emoteId VARCHAR(30))");
+            PreparedStatement preparedStatement = this.connection.prepareStatement("CREATE TABLE IF NOT EXISTS user_icons(row_id INT AUTO_INCREMENT PRIMARY KEY, uuid TEXT, iconId VARCHAR(30))");
 
             preparedStatement.executeUpdate();
             preparedStatement.close();
@@ -388,11 +263,6 @@ public class MysqlProvider implements IProvider {
             preparedStatement.close();
 
             preparedStatement = this.connection.prepareStatement("CREATE TABLE IF NOT EXISTS user_colors(row_id INT AUTO_INCREMENT PRIMARY KEY, uuid TEXT, color VARCHAR(16))");
-
-            preparedStatement.executeUpdate();
-            preparedStatement.close();
-
-            preparedStatement = this.connection.prepareStatement("CREATE TABLE IF NOT EXISTS emotes(rowId INT AUTO_INCREMENT PRIMARY KEY, emoteName VARCHAR(30), format VARCHAR(16))");
 
             preparedStatement.executeUpdate();
             preparedStatement.close();

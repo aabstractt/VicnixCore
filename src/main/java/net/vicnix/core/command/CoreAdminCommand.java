@@ -1,21 +1,25 @@
 package net.vicnix.core.command;
 
 import net.vicnix.core.VicnixCore;
+import net.vicnix.core.listener.InventoryIconSelector;
 import net.vicnix.core.provider.MysqlProvider;
+import net.vicnix.core.utils.VicnixIcon;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
-import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Player;
 
-public class CoreAdminCommand implements CommandExecutor {
+import java.util.Collections;
+
+public class CoreAdminCommand extends Command {
+
+    public CoreAdminCommand(String name) {
+        super(name, "", "", Collections.singletonList("ac"));
+    }
 
     @Override
-    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (!command.getName().equals("coreadmin")) {
-            return false;
-        }
-
+    public boolean execute(CommandSender sender, String label, String[] args) {
         Bukkit.getScheduler().runTaskAsynchronously(VicnixCore.getInstance(), () -> this.executeCommand(sender, label, args));
 
         return false;
@@ -30,44 +34,36 @@ public class CoreAdminCommand implements CommandExecutor {
 
         MysqlProvider provider = MysqlProvider.getInstance();
 
-        if (args[0].equals("addemote")) {
-            if (args.length < 3) {
-                sender.sendMessage(ChatColor.RED + "Use /" + label + " addemote <emoteName> <emote>");
-
-                return;
-            }
-
-            if (provider.getEmote(args[1]) != null) {
-                sender.sendMessage(ChatColor.RED + "Emote already exists");
-
-                return;
-            }
-
-            provider.addEmote(args[1], args[2]);
-
-            sender.sendMessage(ChatColor.GREEN + "Emote " + ChatColor.AQUA + args[1] + ChatColor.GREEN + " was added.");
-
-            return;
-        }
-
-        if (args[0].equalsIgnoreCase("setemote")) {
+        if (args[0].equalsIgnoreCase("seticon")) {
             if (args.length < 3) {
                 sender.sendMessage(ChatColor.RED + "Use /" + label + " setemote <player> <emoteName>");
 
                 return;
             }
 
-            int emoteId = provider.getEmoteId(args[2]);
+            VicnixIcon icon = VicnixIcon.of(args[2]);
 
-            if (emoteId == -1) {
-                sender.sendMessage(ChatColor.RED + "Emote not found");
+            if (icon == null) {
+                sender.sendMessage(ChatColor.RED + "Icon not found");
 
                 return;
             }
 
-            provider.setPlayerEmote(args[1], emoteId);
+            provider.setPlayerIcon(args[1], icon);
 
-            sender.sendMessage(ChatColor.GREEN + "Emote " + args[2] + " was added to " + args[1]);
+            sender.sendMessage(ChatColor.GREEN + "Icon " + icon.getName() + " was added to " + args[1]);
+
+            return;
+        }
+
+        if (args[0].equalsIgnoreCase("iconmenu")) {
+            if (!(sender instanceof Player)) {
+                sender.sendMessage(ChatColor.RED + "Run this command in-game");
+
+                return;
+            }
+
+            new InventoryIconSelector().open((Player) sender);
         }
     }
 }
