@@ -1,0 +1,10 @@
+name: VicnixCore
+version: 1.0
+author: wXav
+main: net.vicnix.core.VicnixCore
+depend:
+  - LuckPerms
+commands:
+  coreadmin:
+    aliases: [ca]
+    description: "Administrate the core"
